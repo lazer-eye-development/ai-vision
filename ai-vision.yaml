@@ -1,0 +1,99 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'CloudFormation template for creating SNS topics and an IAM user'
+
+Parameters:
+  AccountId:
+    Type: String
+    Description: 'AWS account ID'
+
+Resources:
+  SafetyTopic:
+    Type: 'AWS::SNS::Topic'
+    Properties:
+      TopicName: !Sub 'safety-${AccountId}'
+
+  CleaningTopic:
+    Type: 'AWS::SNS::Topic'
+    Properties:
+      TopicName: !Sub 'cleaning-${AccountId}'
+
+  LightingTopic:
+    Type: 'AWS::SNS::Topic'
+    Properties:
+      TopicName: !Sub 'lighting-${AccountId}'
+
+  GoodTopic:
+    Type: 'AWS::SNS::Topic'
+    Properties:
+      TopicName: !Sub 'good-${AccountId}'
+
+  AIShopFloorManagerUser:
+    Type: 'AWS::IAM::User'
+    Properties:
+      UserName: ai-vision
+      Policies:
+        - PolicyName: AIShopFloorManagerPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'sns:Publish'
+                Resource:
+                  - !Ref SafetyTopic
+                  - !Ref CleaningTopic
+                  - !Ref LightingTopic
+                  - !Ref GoodTopic
+              - Effect: Allow
+                Action:
+                  - 'cloudformation:DescribeStacks'
+                  - 'cloudformation:DescribeStackResources'
+                Resource: !Sub 'arn:aws:cloudformation:us-west-2:${AWS::AccountId}:stack/ai-vision-cft/*'
+        - PolicyName: BedrockPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: BedrockAll
+                Effect: Allow
+                Action:
+                  - 'bedrock:*'
+                Resource: '*'
+              - Sid: DescribeKey
+                Effect: Allow
+                Action:
+                  - 'kms:DescribeKey'
+                Resource: 'arn:*:kms:*:::*'
+              - Sid: APIsWithAllResourceAccess
+                Effect: Allow
+                Action:
+                  - 'iam:ListRoles'
+                  - 'ec2:DescribeVpcs'
+                  - 'ec2:DescribeSubnets'
+                  - 'ec2:DescribeSecurityGroups'
+                Resource: '*'
+              - Sid: PassRoleToBedrock
+                Effect: Allow
+                Action:
+                  - 'iam:PassRole'
+                Resource: 'arn:aws:iam::*:role/*AmazonBedrock*'
+                Condition:
+                  StringEquals:
+                    'iam:PassedToService':
+                      - 'bedrock.amazonaws.com'
+
+Outputs:
+  SafetyTopicArn:
+    Description: 'ARN of the safety SNS topic'
+    Value: !Ref SafetyTopic
+
+  CleaningTopicArn:
+    Description: 'ARN of the cleaning SNS topic'
+    Value: !Ref CleaningTopic
+
+  LightingTopicArn:
+    Description: 'ARN of the lighting SNS topic'
+    Value: !Ref LightingTopic
+
+  GoodTopicArn:
+    Description: 'ARN of the good SNS topic'
+    Value: !Ref GoodTopic
